@@ -69,6 +69,25 @@ const runGraphQLServer = function(context) {
         let collection = db.collection("users");
         let result = await collection.findOne({ _id: userName });
         return result;
+      },
+      id: (parent, args, ctx, info) => {
+        const result = parent._id;
+        return result;
+      }
+    },
+
+    User:{
+      bills:  async (parent, args, ctx, info) => {
+        const user = ObjectID(parent._id);
+        const { client } = ctx;
+        const db = client.db("authentication");
+        const collection = db.collection("bills");
+        const result = await collection.find({ user }).toArray();
+        return result;
+      },
+      id: (parent, args, ctx, info) => {
+        const result = parent._id;
+        return result;
       }
     },
 
@@ -80,6 +99,7 @@ const runGraphQLServer = function(context) {
         const result = await collection.find({}).toArray();
         return result;
       },
+
       getBills: async (parent, args, ctx, info) => {
         const {name, token} = args;
         const { client } = ctx;
@@ -91,15 +111,11 @@ const runGraphQLServer = function(context) {
 
         if (ok){
           const user = ok._id;
-          return await collectionBills.find({user}).toArray();
-  
-          
+          return await collectionBills.find({user}).toArray();          
         }
         else{
-          return new Error("Could not add bill");
+          return new Error("User not logged");
         }
-
-
       }
     },
     Mutation: {
@@ -158,7 +174,6 @@ const runGraphQLServer = function(context) {
         else{
           return new Error("Could not add bill");
         }
-        
       },
 
       login: async (parent, args, ctx, info) => {
@@ -232,6 +247,9 @@ const runGraphQLServer = function(context) {
             const result = await Promise.all(asyncFunctions);
           })();
           return "User deleted";
+        }
+        else{
+          return new Error("Couldn't remove user");
         }
       },
 
