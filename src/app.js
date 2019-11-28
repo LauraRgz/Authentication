@@ -1,5 +1,6 @@
 import { MongoClient, ObjectID } from "mongodb";
 import { GraphQLServer } from "graphql-yoga";
+import * as uuid from "uuid";
 
 import "babel-polyfill";
 import { rejects } from "assert";
@@ -30,44 +31,140 @@ const connectToDb = async function(usr, pwd, url) {
 const runGraphQLServer = function(context) {
   const typeDefs = `
     type Bill{
-        id: ID!
-        description: String!
-        date: String!
-        user: User!
+      id: ID!
+      description: String!
+      amount: Float!
+      date: String!
+      user: User!
     }
     type User{
-        id: ID!
-        name: String!
-        password: String!
-        bills: [Bill]!
+      id: ID!
+      name: String!
+      password: String!
+      bills: [Bill]!
+      token: ID
     }
-    
     type Query{
-        getBills(): [Bill]!
+      getUsers: [User] 
     }
+
     type Mutation{
-        addUser(): Author!
-        login(): String!
-        logout(): String!
-        removeUser(): String!
-        
+      addUser(name: String!, password: String!): User!
+      addBill(user: ID!, token: ID!, description: String!, amount: Float!): Bill!
+      login(name: String!, password: String!): String
     }
       `;
 
   const resolvers = {
-      Query: {},
 
-      Mutation: {}
+    Query:{
+      getUsers: async (parent, args, ctx, info) => {
+        const { client } = ctx;
+        const db = client.db("authentication");
+        const collection = db.collection("users");
+        const result = await collection.find({}).toArray();
+        return result;
+      }
+    },
+    Mutation: {
+      addUser: async (parent, args, ctx, info) => {
+        const { name, password } = args;
+        const { client } = ctx;
 
+        const db = client.db("authentication");
+        const collection = db.collection("users");
 
+        const notOk = await collection.findOne({name});
+        if(!notOk){
+          
+          const token = null;
+          const result = await collection.insertOne({ name, password });
+  
+          return {
+            name,
+            password,
+            token,
+            id: result.ops[0]._id
+          };
+        } 
+        else{
+          return Error;
+        }
+      },
+
+      // addBill: async (parent, args, ctx, info) => {
+      //   const { user, token, description, amount } = args;
+      //   const { client } = ctx;
+
+      //   const db = client.db("authentication");
+      //   const collection = db.collection("bills");
+
+      //   const date = new Date().getDate();
+
+      //   const result = await collection.insertOne({
+      //     user,
+      //     description,
+      //     amount
+      //   });
+
+      //   return {
+      //     user,
+      //     description,
+      //     amount,
+      //     date,
+      //     id: result.ops[0]._id
+      //   };
+      // }
+
+      login: async (parent, args, ctx, info) => {
+        const {name, password} = args;
+        const { client } = ctx;
+
+        const db = client.db("authentication");
+        const collection = db.collection("users");
+        
+        const ok = await collection.findOne({name, password});
+        
+        if (ok){
+          const token = uuid.v4();
+          await collection.updateOne(
+            { name: name },
+            { $set: {token: token}}
+          );
+         return token;
+        }
+        else{
+          return new Error("error");
+        }
+      },
+    }
+  };
+  const server = new GraphQLServer({ typeDefs, resolvers, context });
+  const options = {
+    port: 8000
+  };
+
+  try {
+    server.start(options, ({ port }) =>
+      console.log(
+        `Server started, listening on port ${port} for incoming requests.`
+      )
+    );
+  } catch (e) {
+    console.info(e);
+    server.close();
   }
 };
 
 const runApp = async function() {
-    const client = await connectToDb(usr, pwd, url);
-    console.log("Connect to Mongo DB");
-  
+  const client = await connectToDb(usr, pwd, url);
+  console.log("Connect to Mongo DB");
+  try {
     runGraphQLServer({ client });
-  };
-  
-  runApp();
+  } catch (e) {
+    console.log(e);
+    client.close();
+  }
+};
+
+runApp();
