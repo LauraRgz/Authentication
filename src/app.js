@@ -5,6 +5,7 @@ import * as uuid from "uuid";
 import "babel-polyfill";
 import { rejects } from "assert";
 import { json } from "express";
+import { getVariableValues } from "graphql/execution/values";
 
 const usr = "Laura";
 const pwd = "Pabl11";
@@ -46,6 +47,7 @@ const runGraphQLServer = function(context) {
     }
     type Query{
       getUsers: [User] 
+      getBills(name: String!, token: String!):[Bill]
     }
 
     type Mutation{
@@ -58,6 +60,17 @@ const runGraphQLServer = function(context) {
 
   const resolvers = {
 
+    Bill:{
+      user:  async (parent, args, ctx, info) => {
+        const userName = parent.user;
+        const { client } = ctx;
+        const db = client.db("authentication");
+        let collection = db.collection("users");
+        let result = await collection.findOne({ _id: userName });
+        return result;
+      }
+    },
+
     Query:{
       getUsers: async (parent, args, ctx, info) => {
         const { client } = ctx;
@@ -65,6 +78,27 @@ const runGraphQLServer = function(context) {
         const collection = db.collection("users");
         const result = await collection.find({}).toArray();
         return result;
+      },
+      getBills: async (parent, args, ctx, info) => {
+        const {name, token} = args;
+        const { client } = ctx;
+        const db = client.db("authentication");
+        const collectionBills = db.collection("bills");
+        const collectionUsers = db.collection("users");
+
+        const ok = await collectionUsers.findOne({name, token});
+
+        if (ok){
+          const user = ok._id;
+          return await collectionBills.find({user}).toArray();
+  
+          
+        }
+        else{
+          return new Error("Could not add bill");
+        }
+
+
       }
     },
     Mutation: {
