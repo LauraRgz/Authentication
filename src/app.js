@@ -88,7 +88,7 @@ const runGraphQLServer = function(context) {
           };
         } 
         else{
-          return Error;
+          return new Error("Username already in use");
         }
       },
 
@@ -134,7 +134,7 @@ const runGraphQLServer = function(context) {
          return token;
         }
         else{
-          return new Error("error");
+          return new Error("Error: User not found");
         }
       },
     }
