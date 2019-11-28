@@ -102,9 +102,7 @@ const runGraphQLServer = function(context) {
         const collectionUsers = db.collection("users");
 
         const date = new Date().getDate();
-        //const usr = await collectionUsers.findOne({name});
-        // const nam = usr.nam;
-        // const tok = usr.tok;
+
         const ok = await collectionUsers.findOne({name, token});
         if (ok){
           const user = ok._id;
