@@ -51,7 +51,8 @@ const runGraphQLServer = function(context) {
     type Mutation{
       addUser(name: String!, password: String!): User!
       addBill(user: ID!, token: ID!, description: String!, amount: Float!): Bill!
-      login(name: String!, password: String!): String
+      login(name: String!, password: String!): String!
+      logout(name: String!, token: String!): String
     }
       `;
 
@@ -137,6 +138,29 @@ const runGraphQLServer = function(context) {
           return new Error("Error: User not found");
         }
       },
+
+      logout: async (parent, args, ctx, info) => {
+        const {name, token} = args;
+        const { client } = ctx;
+
+        const db = client.db("authentication");
+        const collection = db.collection("users");
+        
+        const ok = await collection.findOne({name, token});
+        
+        if (ok){
+          const token = null;
+          await collection.updateOne(
+            { name: name },
+            { $set: {token: token}}
+          );
+         return "Logout successfuly";
+        }
+        else{
+          return new Error("Error: User not found");
+        }
+      },
+
     }
   };
   const server = new GraphQLServer({ typeDefs, resolvers, context });
