@@ -55,6 +55,7 @@ const runGraphQLServer = function(context) {
       addBill(name: String!, token: ID!, description: String!, amount: Float!): Bill!
       login(name: String!, password: String!): String!
       logout(name: String!, token: String!): String
+      removeUser(name: String!, token: String!): String
     }
       `;
 
@@ -201,6 +202,36 @@ const runGraphQLServer = function(context) {
         }
         else{
           return new Error("Error: User not found");
+        }
+      },
+      removeUser: async (parent, args, ctx, info) => {
+        const { name, token } = args;
+        const { client } = ctx;
+        const db = client.db("authentication");
+        const collectionUsers = db.collection("users");
+        const collectionBills = db.collection("bills");
+
+        const usr = await collectionUsers.findOne({name, token})
+        if (usr){
+          const deleteBill = () => {
+            return new Promise((resolve, reject) => {
+              const result = collectionBills.deleteMany({
+                user: ObjectID(usr._id)
+              });
+              resolve(result);
+            });
+          };
+          const deleteUser = () => {
+            return new Promise((resolve, reject) => {
+              const result = collectionUsers.deleteOne({name });
+              resolve(result);
+            });
+          };
+          (async function() {
+            const asyncFunctions = [deleteBill(), deleteUser()];
+            const result = await Promise.all(asyncFunctions);
+          })();
+          return "User deleted";
         }
       },
 
