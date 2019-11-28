@@ -50,7 +50,7 @@ const runGraphQLServer = function(context) {
 
     type Mutation{
       addUser(name: String!, password: String!): User!
-      addBill(user: ID!, token: ID!, description: String!, amount: Float!): Bill!
+      addBill(name: String!, token: ID!, description: String!, amount: Float!): Bill!
       login(name: String!, password: String!): String!
       logout(name: String!, token: String!): String
     }
@@ -93,29 +93,40 @@ const runGraphQLServer = function(context) {
         }
       },
 
-      // addBill: async (parent, args, ctx, info) => {
-      //   const { user, token, description, amount } = args;
-      //   const { client } = ctx;
+      addBill: async (parent, args, ctx, info) => {
+        const { name, token, description, amount } = args;
+        const { client } = ctx;
 
-      //   const db = client.db("authentication");
-      //   const collection = db.collection("bills");
+        const db = client.db("authentication");
+        const collectionBills = db.collection("bills");
+        const collectionUsers = db.collection("users");
 
-      //   const date = new Date().getDate();
-
-      //   const result = await collection.insertOne({
-      //     user,
-      //     description,
-      //     amount
-      //   });
-
-      //   return {
-      //     user,
-      //     description,
-      //     amount,
-      //     date,
-      //     id: result.ops[0]._id
-      //   };
-      // }
+        const date = new Date().getDate();
+        //const usr = await collectionUsers.findOne({name});
+        // const nam = usr.nam;
+        // const tok = usr.tok;
+        const ok = await collectionUsers.findOne({name, token});
+        if (ok){
+          const user = ok._id;
+          const result = await collectionBills.insertOne({
+            user,
+            description,
+            amount
+          });
+  
+          return {
+            user,
+            description,
+            amount,
+            date,
+            id: result.ops[0]._id
+          };
+        }
+        else{
+          return new Error("Could not add bill");
+        }
+        
+      },
 
       login: async (parent, args, ctx, info) => {
         const {name, password} = args;
